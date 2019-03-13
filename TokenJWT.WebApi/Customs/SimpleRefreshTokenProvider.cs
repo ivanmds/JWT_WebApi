@@ -12,39 +12,19 @@ namespace TokenJWT.WebApi.Customs
 
         public void Create(AuthenticationTokenCreateContext context)
         {
-            var guid = Guid.NewGuid().ToString();
-
-            // maybe only create a handle the first time, then re-use
-
-            _refreshTokens.TryAdd(guid, context.Ticket);
-
-            // consider storing only the hash of the handle
-
-            context.SetToken(guid);
+            CreateAsync(context).ConfigureAwait(false);
         }
 
         public async Task CreateAsync(AuthenticationTokenCreateContext context)
         {
-
             var guid = Guid.NewGuid().ToString();
-            
-            // maybe only create a handle the first time, then re-use
-
             _refreshTokens.TryAdd(guid, context.Ticket);
-
-            // consider storing only the hash of the handle
-
             context.SetToken(guid);
         }
 
         public void Receive(AuthenticationTokenReceiveContext context)
         {
-            AuthenticationTicket ticket;
-
-            if (_refreshTokens.TryRemove(context.Token, out ticket))
-            {
-                context.SetTicket(ticket);
-            }
+            ReceiveAsync(context).ConfigureAwait(false);
         }
 
         public async Task ReceiveAsync(AuthenticationTokenReceiveContext context)

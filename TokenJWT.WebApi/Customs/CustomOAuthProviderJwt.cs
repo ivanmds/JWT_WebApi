@@ -1,13 +1,22 @@
 ﻿using Microsoft.Owin.Security;
 using Microsoft.Owin.Security.OAuth;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using TokenJWT.WebApi.Models;
 
 namespace TokenJWT.WebApi.Customs
 {
     public class CustomOAuthProviderJwt : OAuthAuthorizationServerProvider
     {
+        private static IEnumerable<UserLogin> USERS = new UserLogin[] {
+            new UserLogin("teste01", "111", new string[] { "adm", "t1" }),
+            new UserLogin("teste02", "222", new string[] { "adm", "t2" }),
+            new UserLogin("teste01", "333", new string[] { "adm", "t3" }),
+        };
+
         public override Task ValidateClientAuthentication(OAuthValidateClientAuthenticationContext context)
         {
             string clientId = string.Empty;
@@ -29,16 +38,22 @@ namespace TokenJWT.WebApi.Customs
         public override Task GrantResourceOwnerCredentials(OAuthGrantResourceOwnerCredentialsContext context)
         {
             context.OwinContext.Response.Headers.Add("Access-Control-Allow-Origin", new[] { "*" });
-            //FAKE FAZER A VALIDAÇÃO NO BANCO DE DADOS
-            if (context.UserName != context.Password)
+
+            UserLogin userLogin = USERS.FirstOrDefault(u => u.UserName == context.UserName && u.Password == context.Password);
+
+            if (userLogin == null)
             {
-                context.SetError("invalid_grant", "Usuário ou senha invalidos");
+                context.SetError("invalid_grant", "UserName and Password are invalids");
+                context.Response.Headers.Add("StatusCode", new[] { ((int)HttpStatusCode.Unauthorized).ToString() });
                 return Task.FromResult<object>(null);
             }
             var identity = new ClaimsIdentity("JWT");
             identity.AddClaim(new Claim(ClaimTypes.Name, context.UserName));
             identity.AddClaim(new Claim("sub", context.UserName));
-            identity.AddClaim(new Claim(ClaimTypes.Role, "Administrator")); //PEGAR AS ROLES CORRETAS
+            
+            foreach(string claim in userLogin.Roles)
+                identity.AddClaim(new Claim(ClaimTypes.Role, claim));
+
             var props = new AuthenticationProperties(new Dictionary<string, string>
                 {
                     {
@@ -46,6 +61,7 @@ namespace TokenJWT.WebApi.Customs
 
                     }
                 });
+
             var ticket = new AuthenticationTicket(identity, props);
             context.Validated(ticket);
             return Task.FromResult<object>(null);
