@@ -1,0 +1,4 @@
+.vs/
+packages/
+TokenJWT.WebApi/bin/
+TokenJWT.WebApi/obj/
